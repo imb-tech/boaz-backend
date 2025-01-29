@@ -33,7 +33,7 @@ async def billz_proxy(operation: BillzRequestSchema):
     if path == 'v2/products':
         products = await get_products(operation)
         return JSONResponse(content=products)
-    elif path.startswith('v2/product?search='):
+    elif path.startswith('v2/products?search='):
         query = path[18:]
         def clean_string(text):
             return re.sub(r'[.,-_]', '', text)
