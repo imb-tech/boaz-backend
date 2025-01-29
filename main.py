@@ -1,13 +1,22 @@
-from fastapi import FastAPI
-from tortoise.contrib.fastapi import register_tortoise
 import redis.asyncio as redis
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from tortoise.contrib.fastapi import register_tortoise
+
+import routes  # noqa
 from config import settings
 from utils import router
 
-import routes  # noqa
-
 app = FastAPI()
 router.apply_routers(app)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
