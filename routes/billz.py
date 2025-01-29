@@ -29,13 +29,12 @@ async def refresh_products(operation):
 
 @billz_router.post('')
 async def billz_proxy(operation: BillzRequestSchema):
-    global product_data
     path = operation.path
     if path == 'v2/products':
         products = await refresh_products(operation)
         return JSONResponse(content=products)
     elif path.startswith('v2/products?search='):
-        product_data = await refresh_products(operation)
+        products = await refresh_products(operation)
         query = path[18:]
 
         def clean_string(text):
@@ -46,7 +45,7 @@ async def billz_proxy(operation: BillzRequestSchema):
 
         cleaned_pattern = clean_pattern(query)
         matching_products = [
-            product for product in product_data['products'] if
+            product for product in products['products'] if
             re.search(cleaned_pattern, clean_string(product["name"]), re.IGNORECASE)
         ]
         if path.startswith(f'v2/product?search={query}&limit='):
