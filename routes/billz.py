@@ -16,7 +16,8 @@ billz_router = router(
 product_data = {}
 
 
-async def get_products(operation):
+async def refresh_products(operation):
+    global product_data
     if not product_data or product_data['expire_fetch'] < datetime.now(timezone.utc):
         product_data.update(await billz.send_request(operation))
         product_data['expire_fetch'] = datetime.now(timezone.utc) + timedelta(
@@ -26,19 +27,24 @@ async def get_products(operation):
     return product_data_for_response
 
 
-
 @billz_router.post('')
 async def billz_proxy(operation: BillzRequestSchema):
+    global product_data
     path = operation.path
     if path == 'v2/products':
-        products = await get_products(operation)
+        products = await refresh_products(operation)
         return JSONResponse(content=products)
     elif path.startswith('v2/products?search='):
+        if not product_data:
+            product_data = await refresh_products(operation)
         query = path[18:]
+
         def clean_string(text):
             return re.sub(r'[.,-_]', '', text)
+
         def clean_pattern(pattern):
             return re.sub(r'[.,-_]', '', pattern)
+
         cleaned_pattern = clean_pattern(query)
         matching_products = [
             product for product in product_data['products'] if
@@ -47,8 +53,8 @@ async def billz_proxy(operation: BillzRequestSchema):
         if path.startswith(f'v2/product?search={query}&limit='):
             limit = path[len(f'v2/product?search={query}&limit='):]
             if limit.isdigit():
-                return matching_products[int(limit):]
+                return {'count': int(limit), 'products': matching_products[int(limit):]}
 
-        return matching_products
+        return {'count': len(matching_products), 'products': matching_products}
 
     return JSONResponse(content=await billz.send_request(operation))
