@@ -7,7 +7,7 @@ from data.schemas import BillzRequestSchema
 
 
 class Billz:
-    __base_url = "https://api-admin.billz.ai/v1/"
+    __base_url = "https://api-admin.billz.ai/"
 
     __access_token: str = None
     __access_token_expire: datetime = None

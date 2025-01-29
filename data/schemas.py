@@ -9,13 +9,11 @@ from config import settings
 
 class BillzRequestSchema(BaseModel):
     path: str | None = None
-    method: str
-    data: dict
 
-    @model_validator(mode='before')
+    @model_validator(mode='after')
     @classmethod
     def model_validate(cls, data) -> Self:
-        if (data.path, data.method) not in ACCESS_URLS and not settings.DEBUG:
+        if data.path not in ACCESS_URLS and not settings.DEBUG:
             raise HTTPException(404, "Not Found Billz Paths")
 
         return data

@@ -4,10 +4,11 @@ import redis.asyncio as redis
 from config import settings
 from utils import router
 
-import routes # noqa
+import routes  # noqa
 
 app = FastAPI()
 router.apply_routers(app)
+
 
 @app.on_event("startup")
 async def startup():
