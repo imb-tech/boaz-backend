@@ -29,7 +29,7 @@ async def refresh_products(operation):
 
 @billz_router.get('/products', tags=['billz'])
 async def get_products(search: str = None, limit: int = 100, offset: int = 0):
-    products = (await refresh_products(BillzRequestSchema(path='v2/products')))
+    products = (await refresh_products(BillzRequestSchema(path='v2/products')))['products']
     try:
         if search:
             def clean_string(text):
@@ -40,7 +40,7 @@ async def get_products(search: str = None, limit: int = 100, offset: int = 0):
 
             cleaned_pattern = clean_pattern(search)
             matching_products = [
-                product for product in products['products']
+                product for product in products
                 if re.search(cleaned_pattern, clean_string(product["name"]), re.IGNORECASE)
             ]
             products = matching_products
