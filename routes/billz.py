@@ -35,8 +35,7 @@ async def billz_proxy(operation: BillzRequestSchema):
         products = await refresh_products(operation)
         return JSONResponse(content=products)
     elif path.startswith('v2/products?search='):
-        if not product_data:
-            product_data = await refresh_products(operation)
+        product_data = await refresh_products(operation)
         query = path[18:]
 
         def clean_string(text):
