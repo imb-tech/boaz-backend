@@ -27,32 +27,61 @@ async def refresh_products(operation):
     return product_data_for_response
 
 
+@billz_router.get('/products', tags=['billz'])
+async def get_products(search: str = None, limit: int = 100, offset: int = 0):
+    products = (await refresh_products(BillzRequestSchema(path='v2/products')))
+    try:
+        if search:
+            def clean_string(text):
+                return re.sub(r'[.,-_]', '', text)
+
+            def clean_pattern(pattern):
+                return re.sub(r'[.,-_]', '', pattern)
+
+            cleaned_pattern = clean_pattern(search)
+            matching_products = [
+                product for product in products['products']
+                if re.search(cleaned_pattern, clean_string(product["name"]), re.IGNORECASE)
+            ]
+            products = matching_products
+        products = products[offset:limit + offset]
+        return {'count': len(products), 'offset': offset, 'products': products}
+    except Exception as e:
+        return {'error': str(e)}
+
+
 @billz_router.post('')
 async def billz_proxy(operation: BillzRequestSchema):
-    path = operation.path
-    if path == 'v2/products':
-        products = await refresh_products(operation)
-        return JSONResponse(content=products)
-    elif path.startswith('v2/products?search='):
-        products = await refresh_products(operation)
-        query = path[18:]
-
-        def clean_string(text):
-            return re.sub(r'[.,-_]', '', text)
-
-        def clean_pattern(pattern):
-            return re.sub(r'[.,-_]', '', pattern)
-
-        cleaned_pattern = clean_pattern(query)
-        matching_products = [
-            product for product in products['products'] if
-            re.search(cleaned_pattern, clean_string(product["name"]), re.IGNORECASE)
-        ]
-        if path.startswith(f'v2/product?search={query}&limit='):
-            limit = path[len(f'v2/product?search={query}&limit='):]
-            if limit.isdigit():
-                return {'count': int(limit), 'products': matching_products[int(limit):]}
-
-        return {'count': len(matching_products), 'products': matching_products}
-
+    #     path = operation.path
+    #     if path == 'v2/products':
+    #         products = await refresh_products(operation)
+    #         return JSONResponse(content=products)
+    #     elif path.startswith('v2/products?search='):
+    #         products = await refresh_products(operation)
+    #         query_part = path[len('v2/product?search='):]
+    #         limit = None
+    #         if '&limit=' in query_part:
+    #             query, limit_part = query_part.split('&limit=', 1)
+    #             if limit_part.isdigit():
+    #                 limit = int(limit_part)
+    #                 print(limit)
+    #         else:
+    #             query = query_part
+    #
+    #         def clean_string(text):
+    #             return re.sub(r'[.,-_]', '', text)
+    #
+    #         def clean_pattern(pattern):
+    #             return re.sub(r'[.,-_]', '', pattern)
+    #
+    #         cleaned_pattern = clean_pattern(query)
+    #         matching_products = [
+    #             product for product in products['products']
+    #             if re.search(cleaned_pattern, clean_string(product["name"]), re.IGNORECASE)
+    #         ]
+    #
+    #         return {
+    #             'count': len(matching_products),
+    #             'products': matching_products[:limit] if limit else matching_products
+    #         }
     return JSONResponse(content=await billz.send_request(operation))
