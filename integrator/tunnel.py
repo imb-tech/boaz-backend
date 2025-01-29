@@ -18,7 +18,9 @@ class Billz:
         async with ClientSession(base_url=Billz.__base_url) as session:
             async with session.post(
                     'v1/auth/login',
-                    data={"secret_key": settings.BILLZ_TOKEN}
+                    json={"secret_token": settings.BILLZ_TOKEN},
+                    ssl=False,
+                    headers={"Content-Type": "application/json"},
             ) as response:
                 response = await response.json()
                 self.__access_token = response['data']['access_token']
@@ -28,13 +30,15 @@ class Billz:
         await self.login_billz()
         headers = {'Authorization': f'Bearer {self.__access_token}'}
         async with ClientSession(base_url=Billz.__base_url) as session:
-            async with session.request(
-                    method=operation.method,
-                    url=operation.path,
-                    headers=headers,
-                    data=operation.body,
-            ) as response:
-                return await response.json()
+            try:
+                async with session.get(
+                        url=operation.path,
+                        headers=headers,
+                        ssl=False
+                ) as response:
+                    return await response.json()
+            except Exception as e:
+                return {'error': str(e)}
 
 
 billz = Billz()

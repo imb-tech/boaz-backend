@@ -1,7 +1,8 @@
+import json
 import re
 from datetime import datetime, timedelta, timezone
 
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 from config import settings
 from data.schemas import BillzRequestSchema
@@ -20,7 +21,7 @@ async def get_products(operation):
         product_data.update(await billz.send_request(operation))
         product_data['expire_fetch'] = datetime.now(timezone.utc) + timedelta(
             minutes=settings.BILLZ_EXPIRE_DATA_MINUTES)
-    return product_data
+    return json.dumps(product_data, default=str).encode("utf-8")
 
 
 @billz_router.post('')
@@ -28,19 +29,14 @@ async def billz_proxy(operation: BillzRequestSchema):
     path = operation.path
     if path == 'v2/products':
         products = await get_products(operation)
-        return JSONResponse(content=products)
+        return Response(content=products)
     elif path.startswith('v2/product?search='):
         query = path[18:]
-
         def clean_string(text):
             return re.sub(r'[.,-_]', '', text)
-
-        # Function to clean the user input pattern
         def clean_pattern(pattern):
             return re.sub(r'[.,-_]', '', pattern)
-
-        user_pattern = "Plastik"
-        cleaned_pattern = clean_pattern(user_pattern)
+        cleaned_pattern = clean_pattern(query)
         matching_products = [
             product for product in product_data['products'] if
             re.search(cleaned_pattern, clean_string(product["name"]), re.IGNORECASE)
@@ -48,4 +44,4 @@ async def billz_proxy(operation: BillzRequestSchema):
 
         return matching_products
 
-    return JSONResponse(content=await billz.send_request(operation))
+    return Response(content=await billz.send_request(operation))
