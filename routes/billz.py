@@ -21,7 +21,9 @@ async def get_products(operation):
         product_data.update(await billz.send_request(operation))
         product_data['expire_fetch'] = datetime.now(timezone.utc) + timedelta(
             minutes=settings.BILLZ_EXPIRE_DATA_MINUTES)
-    return json.dumps(product_data, default=str).encode("utf-8")
+    product_data_for_response = product_data.copy()
+    del product_data_for_response['expire_fetch']
+    return product_data_for_response
 
 
 @billz_router.post('')
@@ -29,7 +31,7 @@ async def billz_proxy(operation: BillzRequestSchema):
     path = operation.path
     if path == 'v2/products':
         products = await get_products(operation)
-        return Response(content=products)
+        return JSONResponse(content=products)
     elif path.startswith('v2/product?search='):
         query = path[18:]
         def clean_string(text):
@@ -44,4 +46,4 @@ async def billz_proxy(operation: BillzRequestSchema):
 
         return matching_products
 
-    return Response(content=await billz.send_request(operation))
+    return JSONResponse(content=await billz.send_request(operation))
