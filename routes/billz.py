@@ -26,6 +26,7 @@ async def get_products(operation):
     return product_data_for_response
 
 
+
 @billz_router.post('')
 async def billz_proxy(operation: BillzRequestSchema):
     path = operation.path
@@ -43,6 +44,10 @@ async def billz_proxy(operation: BillzRequestSchema):
             product for product in product_data['products'] if
             re.search(cleaned_pattern, clean_string(product["name"]), re.IGNORECASE)
         ]
+        if path.startswith(f'v2/product?search={query}&limit='):
+            limit = path[len(f'v2/product?search={query}&limit='):]
+            if limit.isdigit():
+                return matching_products[int(limit):]
 
         return matching_products
 
