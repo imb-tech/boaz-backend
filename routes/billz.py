@@ -1,8 +1,9 @@
-import json
+import asyncio
 import re
 from datetime import datetime, timedelta, timezone
 
-from starlette.responses import JSONResponse, Response
+from fastapi import HTTPException
+from starlette.responses import JSONResponse
 
 from config import settings
 from data.schemas import BillzRequestSchema
@@ -15,22 +16,40 @@ billz_router = router(
 
 product_data = {}
 
+data_lock = asyncio.Lock()
 
-async def refresh_products(operation):
+async def refresh_products(operation) -> dict:
     global product_data
-    if not product_data or product_data['expire_fetch'] < datetime.now(timezone.utc):
-        product_data.update(await billz.send_request(operation))
-        product_data['expire_fetch'] = datetime.now(timezone.utc) + timedelta(
-            minutes=settings.BILLZ_EXPIRE_DATA_MINUTES)
-    product_data_for_response = product_data.copy()
-    del product_data_for_response['expire_fetch']
-    return product_data_for_response
+    async with data_lock:
+        if not product_data or product_data['expire_fetch'] < datetime.now(timezone.utc):
+            try:
+                new_data = await billz.send_request(operation)
+                new_data['expire_fetch'] = datetime.now(timezone.utc) + timedelta(
+                    minutes=settings.BILLZ_EXPIRE_DATA_MINUTES
+                )
+                product_data = new_data
+            except:
+                return product_data
+
+    return {k: v for k, v in product_data.items() if k != 'expire_fetch'}
 
 
 @billz_router.get('/products', tags=['billz'])
-async def get_products(search: str = None, limit: int = 100, offset: int = 0):
-    products = (await refresh_products(BillzRequestSchema(path='v2/products')))['products']
+async def get_products(
+        search: str = None,
+        limit: int = 100,
+        offset: int = 0,
+        product_id: str = None,
+        category_id: str = None
+):
+    products: list = (await refresh_products(BillzRequestSchema(path='v2/products')))['products']
     try:
+        if product_id:
+            products = [p for p in products if p['id'] == product_id]
+
+        if category_id:
+            products = [p for p in products if any(c['id'] == category_id for c in p.get('categories', []))]
+
         if search:
             def clean_string(text):
                 return re.sub(r'[.,-_]', '', text)
@@ -46,6 +65,7 @@ async def get_products(search: str = None, limit: int = 100, offset: int = 0):
             products = matching_products
         products = products[offset:limit + offset]
         return {'count': len(products), 'offset': offset, 'products': products}
+
     except Exception as e:
         return {'error': str(e)}
 
@@ -85,3 +105,6 @@ async def billz_proxy(operation: BillzRequestSchema):
     #             'products': matching_products[:limit] if limit else matching_products
     #         }
     return JSONResponse(content=await billz.send_request(operation))
+
+
+
