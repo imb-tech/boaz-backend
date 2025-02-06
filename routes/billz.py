@@ -13,42 +13,55 @@ billz_router = router(
     '/billz', tags=['billz'],
 )
 
-product_data = {}
+class BillzControl:
+    __product_data: dict = None
 
-data_lock = asyncio.Lock()
+    def __init__(self):
+        self.__product_data = {}
 
 
-async def refresh_products(operation) -> dict:
-    global product_data
-    async with data_lock:
-        if not product_data or product_data['expire_fetch'] < datetime.now(timezone.utc):
+    async def refresh_products(self) -> dict:
+        if not self.__product_data or self.__product_data['expire_fetch'] < datetime.now(timezone.utc):
             try:
-                new_data = await billz.send_request(operation)
+                new_data = await billz.get_all_products()
                 new_data['expire_fetch'] = datetime.now(timezone.utc) + timedelta(
                     minutes=settings.BILLZ_EXPIRE_DATA_MINUTES
                 )
                 if 'error' not in new_data:
-                    product_data = new_data
+                    new_data["products"].sort(
+                        key=lambda x: datetime.strptime(x["updated_at"], "%Y-%m-%d %H:%M:%S"), reverse=True)
+                    self.__product_data = new_data
             except:
-                return product_data
+                return self.__product_data
 
-    return {k: v for k, v in product_data.items() if k != 'expire_fetch'}
+        return {k: v for k, v in self.__product_data.items() if k != 'expire_fetch'}
 
 
-def search_product(patterns: list[str]) -> list:
-    matching_products = []
-    added_ids = set()
-    for pattern in patterns:
-        for product in product_data['products']:
-            if re.search(
-                    pattern,
-                    re.sub(r'[.,-_]', '', product["name"].lower()),
-                    flags=re.IGNORECASE) and product['id'] not in added_ids:
+    def search_product(self, patterns: list[str]) -> list:
+        matching_products = []
+        added_ids = set()
+        for pattern in patterns:
+            for product in self.__product_data['products']:
+                if re.search(
+                        pattern,
+                        re.sub(r'[.,-_]', '', product["name"].lower()),
+                        flags=re.IGNORECASE) and product['id'] not in added_ids:
+                    matching_products.append(product)
+                    added_ids.add(product['id'])
+
+        return matching_products
+
+
+    def filter_with_sku(self, sku: str) -> list:
+        matching_products = []
+        for product in self.__product_data['products']:
+            if product['sku'] == sku:
                 matching_products.append(product)
-                added_ids.add(product['id'])
+        return matching_products
 
-    return matching_products
 
+
+billz_control = BillzControl()
 
 @billz_router.get('/products', tags=['billz'])
 async def get_products(
@@ -56,9 +69,9 @@ async def get_products(
         limit: int = 100,
         offset: int = 0,
         product_id: str = None,
-        category_id: str = None
+        category_id: str = None,
 ):
-    products: list = (await refresh_products(BillzRequestSchema(path='v2/products?limit=10000')))['products']
+    products: list = (await billz_control.refresh_products())['products']
     try:
         if product_id:
             products = [p for p in products if p['id'] == product_id]
@@ -67,9 +80,16 @@ async def get_products(
             products = [p for p in products if any(c['id'] == category_id for c in p.get('categories', []))]
 
         if search:
-            cleaned_pattern = re.sub(r'[.,-_]', '', search).lower()
-            matching_products = search_product(cleaned_pattern.split(' '))
-            products = matching_products
+
+            if ' ' not in search:
+                filtered_with_sku = billz_control.filter_with_sku(search)
+                if filtered_with_sku:
+                    products = filtered_with_sku
+
+            if not products:
+                cleaned_pattern = re.sub(r'[.,-_]', '', search).lower()
+                matching_products = billz_control.search_product(cleaned_pattern.split(' '))
+                products = matching_products
         products = products[offset:limit + offset]
         return {'count': len(products), 'offset': offset, 'products': products}
 
