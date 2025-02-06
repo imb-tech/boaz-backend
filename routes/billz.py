@@ -42,7 +42,7 @@ async def get_products(
         product_id: str = None,
         category_id: str = None
 ):
-    products: list = (await refresh_products(BillzRequestSchema(path='v2/products')))['products']
+    products: list = (await refresh_products(BillzRequestSchema(path='v2/products?limit=10000')))['products']
     try:
         if product_id:
             products = [p for p in products if p['id'] == product_id]
@@ -51,16 +51,10 @@ async def get_products(
             products = [p for p in products if any(c['id'] == category_id for c in p.get('categories', []))]
 
         if search:
-            def clean_string(text):
-                return re.sub(r'[.,-_]', '', text)
-
-            def clean_pattern(pattern):
-                return re.sub(r'[.,-_]', '', pattern)
-
-            cleaned_pattern = clean_pattern(search)
+            cleaned_pattern = re.sub(r'[.,-_]', '', search).lower()
             matching_products = [
                 product for product in products
-                if re.search(cleaned_pattern, clean_string(product["name"]), re.IGNORECASE)
+                if re.search(cleaned_pattern, re.sub(r'[.,-_]', '', product["name"].lower()), re.IGNORECASE)
             ]
             products = matching_products
         products = products[offset:limit + offset]
