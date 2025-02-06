@@ -2,7 +2,6 @@ import asyncio
 import re
 from datetime import datetime, timedelta, timezone
 
-from fastapi import HTTPException
 from starlette.responses import JSONResponse
 
 from config import settings
@@ -18,6 +17,7 @@ product_data = {}
 
 data_lock = asyncio.Lock()
 
+
 async def refresh_products(operation) -> dict:
     global product_data
     async with data_lock:
@@ -27,11 +27,27 @@ async def refresh_products(operation) -> dict:
                 new_data['expire_fetch'] = datetime.now(timezone.utc) + timedelta(
                     minutes=settings.BILLZ_EXPIRE_DATA_MINUTES
                 )
-                product_data = new_data
+                if 'error' not in new_data:
+                    product_data = new_data
             except:
                 return product_data
 
     return {k: v for k, v in product_data.items() if k != 'expire_fetch'}
+
+
+def search_product(patterns: list[str]) -> list:
+    matching_products = []
+    added_ids = set()
+    for pattern in patterns:
+        for product in product_data['products']:
+            if re.search(
+                    pattern,
+                    re.sub(r'[.,-_]', '', product["name"].lower()),
+                    flags=re.IGNORECASE) and product['id'] not in added_ids:
+                matching_products.append(product)
+            added_ids.add(product['id'])
+
+    return matching_products
 
 
 @billz_router.get('/products', tags=['billz'])
@@ -52,10 +68,7 @@ async def get_products(
 
         if search:
             cleaned_pattern = re.sub(r'[.,-_]', '', search).lower()
-            matching_products = [
-                product for product in products
-                if re.search(cleaned_pattern, re.sub(r'[.,-_]', '', product["name"].lower()), re.IGNORECASE)
-            ]
+            matching_products = search_product(cleaned_pattern.split(' '))
             products = matching_products
         products = products[offset:limit + offset]
         return {'count': len(products), 'offset': offset, 'products': products}
@@ -99,6 +112,3 @@ async def billz_proxy(operation: BillzRequestSchema):
     #             'products': matching_products[:limit] if limit else matching_products
     #         }
     return JSONResponse(content=await billz.send_request(operation))
-
-
-
