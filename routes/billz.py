@@ -82,9 +82,7 @@ async def get_products(
         if search:
 
             if ' ' not in search:
-                filtered_with_sku = billz_control.filter_with_sku(search)
-                if filtered_with_sku:
-                    products = filtered_with_sku
+                products = billz_control.filter_with_sku(search)
 
             if not products:
                 cleaned_pattern = re.sub(r'[.,-_]', '', search).lower()
