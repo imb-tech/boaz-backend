@@ -45,7 +45,7 @@ def search_product(patterns: list[str]) -> list:
                     re.sub(r'[.,-_]', '', product["name"].lower()),
                     flags=re.IGNORECASE) and product['id'] not in added_ids:
                 matching_products.append(product)
-            added_ids.add(product['id'])
+                added_ids.add(product['id'])
 
     return matching_products
 
