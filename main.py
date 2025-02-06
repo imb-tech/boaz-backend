@@ -29,14 +29,14 @@ async def shutdown():
     await getattr(app, 'redis').close()
     await app.redis.close()
 
-#
-# register_tortoise(
-#     app,
-#     db_url=settings.DATABASE_URL,
-#     modules={"models": ["data.models"]},
-#     generate_schemas=True,
-#     add_exception_handlers=True,
-# )
+
+register_tortoise(
+    app,
+    db_url=settings.DATABASE_URL,
+    modules={"models": ["data.models"]},
+    generate_schemas=True,
+    add_exception_handlers=True,
+)
 
 
 @app.get("/")
