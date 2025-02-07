@@ -13,10 +13,12 @@ class BillzRequestSchema(BaseModel):
     @model_validator(mode='after')
     @classmethod
     def model_validate(cls, data) -> Self:
-        if data.path not in ACCESS_URLS and not settings.DEBUG:
-            raise HTTPException(404, "Not Found Billz Paths")
-
-        return data
+        if settings.DEBUG:
+            return data
+        for url in ACCESS_URLS:
+            if url.startswith(data.path):
+                return data
+        raise HTTPException(404, "Not Found Billz Paths")
 
 class UserPhoneValidateSchema(BaseModel):
     phone_number: str
