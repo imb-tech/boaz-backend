@@ -16,7 +16,7 @@ class BillzRequestSchema(BaseModel):
         if settings.DEBUG:
             return data
         for url in ACCESS_URLS:
-            if url.startswith(data.path):
+            if data.path.startswith(url):
                 return data
         raise HTTPException(404, "Not Found Billz Paths")
 

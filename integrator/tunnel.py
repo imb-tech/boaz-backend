@@ -44,7 +44,7 @@ class Billz:
 
     async def get_all_products(self):
         return await self.send_request(
-            BillzRequestSchema(path='v2/product-search-with-filters'),
+            BillzRequestSchema(path='v2/product-searh-with-filters'),
             request_method='POST',
             data={"search": "", "status": "all", "order": [""], "group_variations": True, "product_field_filters": [],
                   "field_search_key": "", "archived_list": False, "brand_ids": [], "supplier_ids": [],
