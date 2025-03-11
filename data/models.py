@@ -1,7 +1,6 @@
 import enum
 from typing import Type, Optional, Any, Iterable
 
-from passlib.context import CryptContext
 from tortoise import Model, fields, BaseDBAsyncClient
 from tortoise.models import MODEL
 
@@ -12,9 +11,6 @@ class OrderStatusChoices(enum.IntEnum):
     PENDING = 0
     CANCELLED = 1
     COMPLETED = 2
-
-
-
 
 
 class User(Model):

@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta
 
 from aiohttp import ClientSession
@@ -49,8 +50,15 @@ class Billz:
             data={"search": "", "status": "all", "order": [""], "group_variations": True, "product_field_filters": [],
                   "field_search_key": "", "archived_list": False, "brand_ids": [], "supplier_ids": [],
                   "measurement_unit_ids": [], "is_free_price": None, "supply_price_from": 1, "retail_price_from": 1,
-                  "shop_ids": ["fac0d3fd-4d70-4082-88f4-2da77752f071", "3c1b6d19-b33c-48b8-a8c6-813270b8bb12"], "statistics": True, "limit": 10000, "page": 1}
+                  "shop_ids": ["fac0d3fd-4d70-4082-88f4-2da77752f071", "3c1b6d19-b33c-48b8-a8c6-813270b8bb12"],
+                  "statistics": True, "limit": 10000, "page": 1}
         )
+
+    async def get_product_detail(self, uuid: str):
+        return await self.send_request(
+            BillzRequestSchema(path=f'v2/product/{uuid}'),
+        )
+
 
 
 billz = Billz()

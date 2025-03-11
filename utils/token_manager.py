@@ -7,7 +7,6 @@ from config import settings
 ALGORITHM = "HS256"
 
 
-# Function to create the JWT token
 def create_jwt_token(data: dict) -> str:
     expiration = datetime.now(timezone.utc) + timedelta(days=settings.TOKEN_EXPIRATION_DAYS)
     to_encode = data.copy()
